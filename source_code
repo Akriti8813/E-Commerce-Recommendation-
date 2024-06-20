@@ -1,0 +1,139 @@
+#include <iostream>
+#include<algorithm>
+#include <unordered_map>
+#include <vector>
+#include <set>
+#include <cmath>
+
+using namespace std;
+
+// Product class
+class Product {
+public:
+    int id;
+    string name;
+    string category;
+
+    Product(int id, string name, string category)
+        : id(id), name(name), category(category) {}
+};
+
+// User class
+class User {
+public:
+    int id;
+    string name;
+    set<int> purchasedProducts;
+
+    User(int id, string name) : id(id), name(name) {}
+};
+
+// E-commerce System class
+class ECommerceSystem {
+private:
+    unordered_map<int, Product> products;
+    unordered_map<int, User> users;
+
+public:
+    // Add product to the system
+    void addProduct(int id, string name, string category) {
+        products[id] = Product(id, name, category);
+    }
+
+    // Add user to the system
+    void addUser(int id, string name) {
+        users[id] = User(id, name);
+    }
+
+    // Add purchase record
+    void addPurchase(int userId, int productId) {
+        users[userId].purchasedProducts.insert(productId);
+    }
+
+    // Calculate similarity between two users
+    double calculateSimilarity(const User& user1, const User& user2) {
+        int commonProducts = 0;
+        for (int productId : user1.purchasedProducts) {
+            if (user2.purchasedProducts.find(productId) != user2.purchasedProducts.end()) {
+                commonProducts++;
+            }
+        }
+        return static_cast<double>(commonProducts) / sqrt(user1.purchasedProducts.size() * user2.purchasedProducts.size());
+    }
+
+    // Recommend products to a user based on other similar users
+    vector<int> recommendProducts(int userId, int numRecommendations) {
+        vector<int> recommendations;
+        unordered_map<int, double> productScores;
+
+        // Calculate similarity scores for all users
+        for (const auto& otherUser : users) {
+            if (otherUser.first != userId) {
+                double similarity = calculateSimilarity(users[userId], otherUser.second);
+                for (int productId : otherUser.second.purchasedProducts) {
+                    if (users[userId].purchasedProducts.find(productId) == users[userId].purchasedProducts.end()) {
+                        productScores[productId] += similarity;
+                    }
+                }
+            }
+        }
+
+        // Get the top N recommended products
+        vector<pair<int, double>> scoredProducts(productScores.begin(), productScores.end());
+        sort(scoredProducts.begin(), scoredProducts.end(), [](const pair<int, double>& a, const pair<int, double>& b) {
+            return b.second < a.second;
+        });
+
+        for (int i = 0; i < numRecommendations && i < scoredProducts.size(); ++i) {
+            recommendations.push_back(scoredProducts[i].first);
+        }
+
+        return recommendations;
+    }
+
+    // Display all products
+    void displayProducts() {
+        for (const auto& product : products) {
+            cout << "Product ID: " << product.second.id << ", Name: " << product.second.name << ", Category: " << product.second.category << endl;
+        }
+    }
+};
+
+int main() {
+    ECommerceSystem system;
+
+    // Add products
+    system.addProduct(1, "Laptop", "Electronics");
+    system.addProduct(2, "Smartphone", "Electronics");
+    system.addProduct(3, "Book", "Books");
+    system.addProduct(4, "Headphones", "Electronics");
+    system.addProduct(5, "Shoes", "Fashion");
+
+    // Add users
+    system.addUser(1, "Alice");
+    system.addUser(2, "Bob");
+    system.addUser(3, "Charlie");
+
+    // Add purchase records
+    system.addPurchase(1, 1); // Alice bought Laptop
+    system.addPurchase(1, 3); // Alice bought Book
+    system.addPurchase(2, 2); // Bob bought Smartphone
+    system.addPurchase(2, 3); // Bob bought Book
+    system.addPurchase(3, 1); // Charlie bought Laptop
+    system.addPurchase(3, 4); // Charlie bought Headphones
+
+    // Recommend products for Alice (userId = 1)
+    vector<int> recommendations = system.recommendProducts(1, 2);
+
+    // Display recommendations
+    cout << "Recommendations for Alice: ";
+    for (int productId : recommendations) {
+        cout << productId << " ";
+    }
+    cout << endl;
+
+    // Display all products
+    system.displayProducts();
+
+    return 0;
+}
